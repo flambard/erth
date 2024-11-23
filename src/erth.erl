@@ -17,16 +17,16 @@ start(Stream) ->
     top_level_loop(Stream, []).
 
 top_level_loop(Stream, Stack) ->
-    UpdatedStack =
-        case get_next_word(Stream) of
-            compile_mode ->
-                {Word, CompiledWords} = compile_word(Stream),
-                ets:insert(compiled_words, {Word, CompiledWords}),
-                Stack;
-            Word ->
-                evaluate_word(Word, Stack)
-        end,
-    top_level_loop(Stream, UpdatedStack).
+    case get_next_word(Stream) of
+        eof ->
+            Stack;
+        compile_mode ->
+            {Word, CompiledWords} = compile_word(Stream),
+            ets:insert(compiled_words, {Word, CompiledWords}),
+            top_level_loop(Stream, Stack);
+        Word ->
+            top_level_loop(Stream, evaluate_word(Word, Stack))
+    end.
 
 execute_compiled_word({_CompiledWord, Words}, InitialStack) ->
     lists:foldl(fun evaluate_word/2, InitialStack, Words).
@@ -62,6 +62,8 @@ compile(Stream, CompiledWords) ->
 
 get_next_word(IoDevice) ->
     case io:fread(IoDevice, "erth> ", " ~s") of
+        eof ->
+            eof;
         {ok, []} ->
             get_next_word(IoDevice);
         {ok, [Word]} ->
