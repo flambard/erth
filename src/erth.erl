@@ -30,24 +30,18 @@ top_level_loop(Stream, Stack) ->
             top_level_loop(Stream, evaluate_word(Word, Stack))
     end.
 
-execute_compiled_word({_CompiledWord, Words}, InitialStack) ->
-    lists:foldl(fun evaluate_word/2, InitialStack, Words).
-
 evaluate_word(Word, Stack) ->
     case lookup_word(Word) of
-        {compiled, CompiledWord} ->
-            execute_compiled_word(CompiledWord, Stack);
-        {builtin, Module, Function} ->
-            Module:Function(Stack);
-        undefined ->
-            [Word | Stack]
+        {compiled, CompiledFun} -> CompiledFun(Stack);
+        {builtin, Module, Function} -> Module:Function(Stack);
+        undefined -> [Word | Stack]
     end.
 
 lookup_word(Word) ->
     case ets:lookup(compiled_words, Word) of
-        [CompiledWord] -> 
-            {compiled, CompiledWord};
-        [] -> 
+        [{_CompiledWord, Fun}] ->
+            {compiled, Fun};
+        [] ->
             case ets:lookup(builtin_words, Word) of
                 [{_BuiltinWord, Module, Function}] ->
                     {builtin, Module, Function};
@@ -62,24 +56,22 @@ compile_word(Stream) ->
     {Word, CompiledWords}.
 
 compile(Stream) ->
-    compile(Stream, []).
+    compile(Stream, fun(Stack) -> Stack end).
 
-compile(Stream, CompiledWords) ->
+compile(Stream, CompiledFun) ->
     case get_next_word(Stream) of
         execute_mode ->
-            lists:reverse(CompiledWords);
+            CompiledFun;
         Word ->
-            compile(Stream, [Word | CompiledWords])
+            WrappedFun = fun(Stack) -> evaluate_word(Word, CompiledFun(Stack)) end,
+            compile(Stream, WrappedFun)
     end.
 
 get_next_word(IoDevice) ->
     case io:fread(IoDevice, "erth> ", " ~s") of
-        eof ->
-            eof;
-        {ok, []} ->
-            get_next_word(IoDevice);
-        {ok, [Word]} ->
-            parse_word(Word)
+        eof -> eof;
+        {ok, []} -> get_next_word(IoDevice);
+        {ok, [Word]} -> parse_word(Word)
     end.
 
 parse_word(":") ->
