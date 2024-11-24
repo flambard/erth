@@ -34,15 +34,25 @@ execute_compiled_word({_CompiledWord, Words}, InitialStack) ->
     lists:foldl(fun evaluate_word/2, InitialStack, Words).
 
 evaluate_word(Word, Stack) ->
+    case lookup_word(Word) of
+        {compiled, CompiledWord} ->
+            execute_compiled_word(CompiledWord, Stack);
+        {builtin, Module, Function} ->
+            Module:Function(Stack);
+        undefined ->
+            [Word | Stack]
+    end.
+
+lookup_word(Word) ->
     case ets:lookup(compiled_words, Word) of
         [CompiledWord] -> 
-            execute_compiled_word(CompiledWord, Stack);
+            {compiled, CompiledWord};
         [] -> 
             case ets:lookup(builtin_words, Word) of
                 [{_BuiltinWord, Module, Function}] ->
-                    Module:Function(Stack);
+                    {builtin, Module, Function};
                 [] ->
-                    [Word | Stack]
+                    undefined
             end
     end.
 
