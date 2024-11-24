@@ -3,4 +3,4 @@
 
 file_with_compiled_word_test() ->
     {ok, F} = file:open("test/erth_code/double_example.erth", [read]),
-    [900] = erth:start(F).
+    [262144, 900] = erth:start(F).
