@@ -11,6 +11,8 @@ start(Stream) ->
                [{"-", erth_builtin, minus},
                 {"*", erth_builtin, multiply},
                 {"+", erth_builtin, plus},
+                {"dup", erth_builtin, dup},
+                {"swap", erth_builtin, swap},
                 {"print", erth_builtin, print},
                 {"show", erth_builtin, show}]),
     _Compiled = ets:new(compiled_words, [named_table, set, public]),
