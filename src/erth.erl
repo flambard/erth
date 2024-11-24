@@ -6,15 +6,6 @@ start() ->
     start(standard_io).
 
 start(Stream) ->
-    Builtin = ets:new(builtin_words, [named_table, set, public]),
-    ets:insert(Builtin,
-               [{"-", erth_builtin, minus},
-                {"*", erth_builtin, multiply},
-                {"+", erth_builtin, plus},
-                {"dup", erth_builtin, dup},
-                {"swap", erth_builtin, swap},
-                {"print", erth_builtin, print},
-                {"show", erth_builtin, show}]),
     _Compiled = ets:new(compiled_words, [named_table, set, public]),
     top_level_loop(Stream, []).
 
@@ -42,11 +33,9 @@ lookup_word(Word) ->
         [{_CompiledWord, Fun}] ->
             {compiled, Fun};
         [] ->
-            case ets:lookup(builtin_words, Word) of
-                [{_BuiltinWord, Module, Function}] ->
-                    {builtin, Module, Function};
-                [] ->
-                    undefined
+            case erth_builtin:lookup_word(Word) of
+                undefined -> undefined;
+                FunctionAtom -> {builtin, erth_builtin, FunctionAtom}
             end
     end.
 
