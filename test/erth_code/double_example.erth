@@ -1,4 +1,6 @@
-: double 2 * ;
+: double ( n -- m )
+    2 *
+;
 
 450 double
 

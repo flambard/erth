@@ -13,6 +13,9 @@ top_level_loop(Stream, Stack) ->
     case get_next_word(Stream) of
         eof ->
             Stack;
+        comment_start ->
+            ok = skip_words_until_end_of_comment(Stream),
+            top_level_loop(Stream, Stack);
         compile_mode ->
             {Word, CompiledWords} = compile_word(Stream),
             ets:insert(compiled_words, {Word, CompiledWords}),
@@ -51,6 +54,9 @@ compile(Stream, CompiledFun) ->
     case get_next_word(Stream) of
         execute_mode ->
             CompiledFun;
+        comment_start ->
+            ok = skip_words_until_end_of_comment(Stream),
+            compile(Stream, CompiledFun);
         Word ->
             WrappedFun = fun(Stack) -> evaluate_word(Word, CompiledFun(Stack)) end,
             compile(Stream, WrappedFun)
@@ -63,10 +69,20 @@ get_next_word(IoDevice) ->
         {ok, [Word]} -> parse_word(Word)
     end.
 
+skip_words_until_end_of_comment(IoDevice) ->
+    case get_next_word(IoDevice) of
+        comment_end -> ok;
+        _Word -> skip_words_until_end_of_comment(IoDevice)
+    end.
+
 parse_word(":") ->
     compile_mode;
 parse_word(";") ->
     execute_mode;
+parse_word("(") ->
+    comment_start;
+parse_word(")") ->
+    comment_end;
 parse_word(Word) ->
     case string:to_integer(Word) of
         {Integer, ""} ->
